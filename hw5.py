@@ -11,11 +11,18 @@
 # ---
 
 # %% [markdown]
+"""
+# Homework 5
+**Mauricio Vargas-Estrada**
+"""
+
+# %% [markdown]
 # # 0.) Import the Credit Card Fraud Data From CCLE
 # %%
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 # %%
 df = pd.read_csv("data/fraudTest.csv")
 # %%
@@ -56,6 +63,10 @@ X_test, X_holdout, y_test, y_holdout = train_test_split(
     test_size=0.5
 )
 # %% [markdown]
+"""
+The process of preprocessing the data will be embedded in the pipeline. This prevents data leakage and involuntary mistakes in the process of evaluating the models.
+"""
+# %% [markdown]
 # # 2.) Make three sets of training data (Oversample, Undersample and SMOTE)
 # %%
 from imblearn.over_sampling import RandomOverSampler
@@ -63,6 +74,10 @@ from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
+# %% [markdown]
+"""
+Like in the previous questions, the pipeline will be used to prevent data leakage and involuntary mistakes in the process of evaluating the models, so the process of balancing the data will be embedded in those.
+"""
 # %% [markdown]
 # # 3.) Train three logistic regression models
 # %%
@@ -94,6 +109,10 @@ log_smote = Pipeline(
 log_smote.fit(X_train, y_train)
 # %% [markdown]
 # # 4.) Test the three models
+# %% [markdown]
+"""
+The three model are going to be tested in-sample and out-sample.
+"""
 # %%
 def print_scores(x, y, over, under, smote, title = 'Out of Sample'):
     # Calculating the score
@@ -130,6 +149,10 @@ print_scores(
     log_over, log_under, log_smote,
     title = 'Out-Sample'
 )
+# %% [markdown]
+"""
+In sample, the under-sampler performs better, but the difference between the three balancing methods is considerable. The conclusion is held in the out of sample metrics. To ensure the performance of the models, a cross-validation would be necessary.
+"""
 # %%
 # We see SMOTE performing with higher accuracy but is ACCURACY really the best measure?
 # %% [markdown]
@@ -146,86 +169,76 @@ print_scores(
 )
 # %% [markdown]
 """
-Analyzing the out of sample and holdout accurracy, we see that SMOTE is slightly better than the other two balancing methods.
+The conclusion is similar using the holdout sample. The under-sampler performs better in-sample, followed by over-sampler and SMOTE. Given the pipelines, the SMOTE balancing method can be tunned using a grid search. 
 """
-# %%
-# Sensitivity here in credit fraud is more important as seen from last class
-
 # %%
 from sklearn.metrics import confusion_matrix
 # %%
 y_true = y_test
 
 # %%
-y_pred = over_log.predict(X_test)
+y_pred = log_over.predict(X_test)
 cm = confusion_matrix(y_true, y_pred)
 cm
-
 # %%
 print("Over Sample Sensitivity : ", cm[1,1] /( cm[1,0] + cm[1,1]))
-
 # %%
-y_pred = under_log.predict(X_test)
+y_pred = log_under.predict(X_test)
 cm = confusion_matrix(y_true, y_pred)
 cm
-
 # %%
 print("Under Sample Sensitivity : ", cm[1,1] /( cm[1,0] + cm[1,1]))
-
 # %%
-y_pred = smote_log.predict(X_test)
+y_pred = log_smote.predict(X_test)
 cm = confusion_matrix(y_true, y_pred)
 cm
-
 # %%
 print("SMOTE Sample Sensitivity : ", cm[1,1] /( cm[1,0] + cm[1,1]))
 
-# %%
-
-
 # %% [markdown]
 # # 6.) Pick two features and plot the two classes before and after SMOTE.
+# %%
+X_smote, y_smote = Pipeline(
+    steps=[
+        ('scaler', StandardScaler()),
+        ('balancer', SMOTE())
+    ]
+).fit_resample(X_train, y_train)
+X_smote = pd.DataFrame(X_smote, columns = X_train.columns)
+y_smote = pd.Series(y_smote, name = 'is_fraud')
 
 # %%
-raw_temp = pd.concat([X_train, y_train], axis =1)
+fig, ax = plt.subplots(2, 1, figsize=(10, 12))
+sns.scatterplot(
+    data=pd.concat([X_train, y_train], axis = 1),
+    x='amt',
+    y='city_pop',
+    hue='is_fraud',
+    alpha=0.5,
+    ax=ax[0]
+)
+ax[0].set_title('Before SMOTE')
+sns.scatterplot(
+    data=pd.concat([X_smote, y_smote], axis = 1),
+    x='amt',
+    y='city_pop',
+    hue='is_fraud',
+    alpha=0.5,
+    ax=ax[1]
+)
+ax[1].set_title('After SMOTE')
 
-# %%
-
-
-# %%
-#plt.scatter(raw_temp[raw_temp["is_fraud"] == 0]["amt"], raw_temp[raw_temp["is_fraud"] == 0]["city_pop"])
-
-plt.scatter(raw_temp[raw_temp["is_fraud"] == 1]["amt"], raw_temp[raw_temp["is_fraud"] == 1]["city_pop"])
-plt.legend(["Fraud", "Not Fraud"])
-plt.xlabel("Amount")
-plt.ylabel("Population")
-
+for a in ax:
+    a.set_xlabel('Amount')
+    a.set_ylabel('Population')
+    a.legend(['Not Fraud', 'Fraud'])
 plt.show()
-
-# %%
-
-raw_temp = pd.concat([smote_X, smote_y], axis =1)
-
-
-# %%
-#plt.scatter(raw_temp[raw_temp["is_fraud"] == 0]["amt"], raw_temp[raw_temp["is_fraud"] == 0]["city_pop"])
-
-plt.scatter(raw_temp[raw_temp["is_fraud"] == 1]["amt"], raw_temp[raw_temp["is_fraud"] == 1]["city_pop"])
-plt.legend([ "Not Fraud", "Fraud"])
-plt.xlabel("Amount")
-plt.ylabel("Population")
-
-plt.show()
-
-# %%
-
-
 # %% [markdown]
 # # 7.) We want to compare oversampling, Undersampling and SMOTE across our 3 models (Logistic Regression, Logistic Regression Lasso and Decision Trees).
 #
 # # Make a dataframe that has a dual index and 9 Rows.
 # # Calculate: Sensitivity, Specificity, Precision, Recall and F1 score. for out of sample data.
-# # Notice any patterns across perfomance for this model. Does one totally out perform the others IE. over/under/smote or does a model perform better DT, Lasso, LR?
+# # Notice any patterns across performance for this model. Does one totally out perform the others IE. over/under/smote or does a model perform better DT, Lasso, LR?
 # # Choose what you think is the best model and why. test on Holdout
 
 # %%
@@ -280,4 +293,7 @@ for i,j in balancing_configs.items():
         }
 # %%
 pd.DataFrame(scores_for_df).T
-# %%
+# %% [markdown]
+"""
+In term of balancing method, the Smote method performs better, specially in the decision tree model, evaluating the sensitivity. In terms of models, the decision tree outperforms the logistic regression and the lasso logistic regression, but is less robust given that it happens only with the random undersampler balancing method. 
+"""
